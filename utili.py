@@ -1,8 +1,11 @@
-    #CLASSES
 import pygame
 import os
 import random
 import time 
+import sys
+
+
+# CLASSES
 
 class Ship:
     def __init__(self, x, y, health = 100):
@@ -62,6 +65,51 @@ class Asteroid(Ship):
     def move(self, y):
         self.y += y
 
+
+class Enemy(Ship):
+    def __init__(self, x, img, laser_img, speed=2):
+        super().__init__(x, -100)
+        self.img = img
+        self.laser_img = laser_img
+        self.mask = pygame.mask.from_surface(self.img)
+        self.speed = speed
+        self.cd_count = 0
+        self.vel = 2
+
+    def movee(self):
+        self.y += self.speed
+
+    def shoot_laser(self, lasers):
+        if self.cd_count == 0:
+            laser = Laser(self.x + self.get_width() // 2 - self.laser_img.get_width() // 2, self.y + self.get_height(), self.laser_img)
+            lasers.append(laser)
+            self.cd_count = 90  
+
+    def update(self, player, lasers):
+        self.movee()
+
+        if self.y >= 100:  
+            self.shoot_laser(lasers)
+            self.y = 100
+            if self.x <= 0 or self.x >= 600:
+                self.vel = -self.vel 
+            self.x += self.vel
+
+        self.cooldown()
+
+        if self.collision(player):
+            player.lives -= 1
+        
+    
+    def collision(self, obj):
+        return collide(self, obj)
+
+    def cooldown(self):
+        if self.cd_count > 0:
+            self.cd_count -= 1
+
+
+
 class Score:
     def __init__(self):
         self.score = 0
@@ -106,7 +154,10 @@ class Laser:
         self.mask = pygame.mask.from_surface(self.img)
 
     def move(self):
-        self.y -= 5  
+        self.y -= 5
+
+    def emove(self):
+        self.y += 5  
 
     def draw(self, window):
         window.blit(self.img, (self.x, self.y))
@@ -114,7 +165,70 @@ class Laser:
     def collision(self, obj):
         return collide(self, obj)
 
+
+class Heart(Player):
+    def __init__(self, x,y, img):
+        self.x = x
+        self.y = y
+        self.img = img
+        self.mask = pygame.mask.from_surface(self.img)
+
+    def draw(self, window):
+        window.blit(self.img, (self.x, self.y))
+
+    def move(self):
+        self.y += 3
+
+    def collision(self,obj):
+        return collide(self,obj)
+
+
+
+
+# HELPING FUNCTIONS
+
+
+
 def collide(obj1, obj2):
     offset_x = int(obj2.x - obj1.x)
     offset_y = int(obj2.y - obj1.y)
     return obj1.mask.overlap(obj2.mask, (offset_x, offset_y)) is not None
+
+def check_collision(player, enemies):
+    for asteroid in enemies:
+        if player.mask.overlap(asteroid.mask, (asteroid.x - player.x, asteroid.y - player.y)):
+            player.lives -= 1 
+            enemies.remove(asteroid)  
+
+def main_menu(wind, background, width, height, high_score,r,lost):
+    menu_font = pygame.font.SysFont("centurygothic", 40)
+    title_label = menu_font.render("Astro Blast", 1, (255, 255, 255))
+    start_label = menu_font.render("Press [Enter] to Start", 1, (255, 255, 255))
+    high_score_label = menu_font.render("Press [H] to View High Score", 1, (255, 255, 255))
+    exit_label = menu_font.render("Press [E] to exit", 1, (255,255,255))
+    menu_running = True
+    while menu_running:
+        wind.blit(background, (0, 0))
+        wind.blit(title_label, (width/2 - title_label.get_width()/2, 300))
+        wind.blit(start_label, (width/2 - start_label.get_width()/2, 400))
+        wind.blit(high_score_label, (width/2 - high_score_label.get_width()/2, 450))
+        wind.blit(exit_label, (width/2 - exit_label.get_width()/2, 500))
+        pygame.display.update()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    menu_running = False
+                    r = True
+                    lost = False
+                elif event.key == pygame.K_h:
+                    high_score_text = menu_font.render(f"High Score: {high_score}", 1, (255, 255, 255))
+                    wind.blit(high_score_text, (width/2 - high_score_text.get_width()/2, 550))
+                    pygame.display.update()
+                    pygame.time.delay(3000) 
+                    main_menu(high_score)
+                elif event.key == pygame.K_e:
+                    sys.exit()
