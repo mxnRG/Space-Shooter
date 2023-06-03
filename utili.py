@@ -24,17 +24,19 @@ class Ship:
         return self.img.get_height()
 
 class Player(Ship):
-    def __init__(self, x,y, img, laser_img,lives = 3):
+    def __init__(self, x,y, img, laser_img, snd,lives = 3):
         super().__init__(x,y,lives)
         self.img = img
         self.laser_img = laser_img
         self.mask = pygame.mask.from_surface(self.img)
         self.lives = lives
         self.laser_cooldown = 0
+        self.snd = snd
 
     def shoot_laser(self, lasers):
         if self.laser_cooldown == 0:
             laser = Laser(self.x + self.get_width() // 2 - self.laser_img.get_width() // 2, self.y, self.laser_img)
+            pygame.mixer.Sound.play(self.snd)
             lasers.append(laser)
             self.laser_cooldown = 30
 
@@ -67,7 +69,7 @@ class Asteroid(Ship):
 
 
 class Enemy(Ship):
-    def __init__(self, x, img, laser_img, speed=2):
+    def __init__(self, x, img, laser_img, snd, speed=2):
         super().__init__(x, -100)
         self.img = img
         self.laser_img = laser_img
@@ -75,6 +77,7 @@ class Enemy(Ship):
         self.speed = speed
         self.cd_count = 0
         self.vel = 2
+        self.snd = snd
 
     def movee(self):
         self.y += self.speed
@@ -82,6 +85,7 @@ class Enemy(Ship):
     def shoot_laser(self, lasers):
         if self.cd_count == 0:
             laser = Laser(self.x + self.get_width() // 2 - self.laser_img.get_width() // 2, self.y + self.get_height(), self.laser_img)
+            pygame.mixer.Sound.play(self.snd)
             lasers.append(laser)
             self.cd_count = 90  
 
@@ -194,14 +198,15 @@ def collide(obj1, obj2):
     offset_y = int(obj2.y - obj1.y)
     return obj1.mask.overlap(obj2.mask, (offset_x, offset_y)) is not None
 
-def check_collision(player, enemies):
+def check_collision(player, enemies, snd):
     for asteroid in enemies:
         if player.mask.overlap(asteroid.mask, (asteroid.x - player.x, asteroid.y - player.y)):
+            pygame.mixer.Sound.play(snd)
             player.lives -= 1 
             enemies.remove(asteroid)  
 
-def main_menu(wind, background, width, height, high_score,r,lost):
-    menu_font = pygame.font.SysFont("centurygothic", 40)
+def main_menu(wind, font, background, width, height, high_score,r,lost):
+    menu_font = pygame.font.Font(font, 40)
     title_label = menu_font.render("Astro Blast", 1, (255, 255, 255))
     start_label = menu_font.render("Press [Enter] to Start", 1, (255, 255, 255))
     high_score_label = menu_font.render("Press [H] to View High Score", 1, (255, 255, 255))

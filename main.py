@@ -7,6 +7,7 @@ import time
 import random
 import sys
 import utili
+import os
 from pygame import mixer
 
 # Loading music and setting up display
@@ -18,22 +19,33 @@ height = 800
 wind = pygame.display.set_mode((width,height))
 pygame.display.set_caption("Space Shooter")
 
-pygame.mixer.music.load('gameMusic.wav')
+
+
+# Loading Images & sounds
+p = 'pics'
+background = pygame.transform.scale(pygame.image.load(os.path.join(p,"background.png")), (width,height))
+player = pygame.image.load(os.path.join(p,"player.png"))
+met1 = pygame.image.load(os.path.join(p,"met1.png"))
+met2 = pygame.image.load(os.path.join(p,"met2.png"))
+met3 = pygame.image.load(os.path.join(p,"met3.png"))
+met4 = pygame.image.load(os.path.join(p,"met4.png"))
+enemyimg = pygame.image.load(os.path.join(p,"enemy.png"))
+laserimg = pygame.image.load(os.path.join(p,"laser.png"))
+elaser = pygame.image.load(os.path.join(p, "elaser.png"))
+icon = pygame.image.load(os.path.join(p,"logo.png"))
+heart = pygame.image.load(os.path.join(p, "heart.png"))
+
+s = 'sounds'
+lasersnd = pygame.mixer.Sound(os.path.join(s, 'plaser.wav'))
+elasersnd = pygame.mixer.Sound(os.path.join(s, 'elaser.wav'))
+losesnd = pygame.mixer.Sound(os.path.join(s, 'lose.wav'))
+destroysnd = pygame.mixer.Sound(os.path.join(s, 'destroy.wav'))
+
+f = 'font'
+font = os.path.join(f, 'font.ttf')
+
+pygame.mixer.music.load(os.path.join(s, 'gameMusic.wav'))
 pygame.mixer.music.play()
-
-# Loading Images
-
-background = pygame.transform.scale(pygame.image.load("background.png"), (width,height))
-player = pygame.image.load("player.png")
-met1 = pygame.image.load("met1.png")
-met2 = pygame.image.load("met2.png")
-met3 = pygame.image.load("met3.png")
-met4 = pygame.image.load("met4.png")
-enemyimg = pygame.image.load("enemy.png")
-elaser = pygame.image.load('elaser.png')
-laserimg = pygame.image.load("laser.png")
-icon = pygame.image.load("logo.png")
-heart = pygame.image.load("heart.png")
 
 pygame.display.set_icon(icon)
 
@@ -45,9 +57,9 @@ def main():
     clock = pygame.time.Clock()
     
 
-    play = utili.Player(250,700, player, laserimg)
-    enmy = utili.Enemy(random.randint(50,550), enemyimg, elaser)
-    main_font = pygame.font.SysFont("centurygothic", 20)
+    play = utili.Player(250,700, player, laserimg, lasersnd)
+    enmy = utili.Enemy(random.randint(50,550), enemyimg, elaser, elasersnd)
+    main_font = pygame.font.Font(font, 20)
     pill = utili.Heart(random.randint(0,600), random.randint(-300,0), heart)
 
     enemies = []
@@ -134,7 +146,7 @@ def main():
         lost = False
         lostcount = 0
 
-        utili.main_menu(wind, background, width, height, highscore,r,lost)
+        utili.main_menu(wind, font, background, width, height, highscore,r,lost)
 
 
         # Main Game loop
@@ -153,10 +165,14 @@ def main():
                 lost = True            
 
             if lost:
+                pygame.mixer.music.stop()
                 if lostcount >= FPS * 5:
                     r = False
+                    pygame.mixer.music.play()
                     main()
                 else:
+                    if lostcount <= 1:
+                        pygame.mixer.Sound.play(losesnd)
                     lostcount += 1
                     for event in pygame.event.get():
                         if event.type == pygame.KEYDOWN:
@@ -239,7 +255,7 @@ def main():
             play.cooldown_laser()
 
             if score.get_score() - last_score >= score_increment:
-                enmy = utili.Enemy(random.randint(50,550), enemyimg, elaser)
+                enmy = utili.Enemy(random.randint(50,550), enemyimg, elaser, elasersnd)
                 if len(enemies_ships) <= 0:
                     enemies_ships.append(enmy)
                 last_score = score.get_score()
@@ -251,12 +267,14 @@ def main():
                 else:
                     for enemy in enemies:
                         if laser.collision(enemy):
+                            pygame.mixer.Sound.play(destroysnd)
                             enemies.remove(enemy)
                             lasers.remove(laser)
                             score.increase_score(30)
                             break
                     for enm in enemies_ships:
                         if laser.collision(enm):
+                            pygame.mixer.Sound.play(destroysnd)
                             enemies_ships.remove(enm)
                             lasers.remove(laser)
                             score.increase_score(50)
@@ -272,7 +290,7 @@ def main():
             for enm in enemies_ships:
                 enm.update(play, elasers)
 
-            utili.check_collision(play, enemies)
+            utili.check_collision(play, enemies, destroysnd)
             
             redraw(play, lasers)
         score.save_score()
