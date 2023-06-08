@@ -21,7 +21,7 @@ pygame.display.set_caption("Space Shooter")
 
 
 
-# Loading Images & sounds
+# Loading Assets
 p = 'pics'
 background = pygame.transform.scale(pygame.image.load(os.path.join(p,"background.png")), (width,height))
 player = pygame.image.load(os.path.join(p,"player.png"))
@@ -34,6 +34,7 @@ laserimg = pygame.image.load(os.path.join(p,"laser.png"))
 elaser = pygame.image.load(os.path.join(p, "elaser.png"))
 icon = pygame.image.load(os.path.join(p,"logo.png"))
 heart = pygame.image.load(os.path.join(p, "heart.png"))
+coin = pygame.image.load(os.path.join(p,"coin.png"))
 
 s = 'sounds'
 lasersnd = pygame.mixer.Sound(os.path.join(s, 'plaser.wav'))
@@ -56,21 +57,24 @@ def main():
     FPS = 60
     clock = pygame.time.Clock()
     
-
+    #Creating objects
     play = utili.Player(250,700, player, laserimg, lasersnd)
     enmy = utili.Enemy(random.randint(50,550), enemyimg, elaser, elasersnd)
     main_font = pygame.font.Font(font, 20)
     pill = utili.Heart(random.randint(0,600), random.randint(-300,0), heart)
 
+    #Initializing lists
     enemies = []
     lasers = []
     enemies_ships = []
     elasers = []
     pills = []
+    coins = []
 
     bg_y = 0
     bg_y2 = -height
 
+    #Initializing controls
     up_pressed = False
     down_pressed = False
     left_pressed = False
@@ -79,6 +83,7 @@ def main():
     timer = pygame.time.get_ticks()
     timer2 = 30 * 1000
     
+    #Initializing scoring system
     score = utili.Score()
     score.load_highscore()
     highscore = score.get_highscore()
@@ -94,6 +99,7 @@ def main():
         lve = "*"
         life = main_font.render(f"Lives: {lve * player.lives}", 1, (255, 255, 255))
         score_label = main_font.render(f"Score: {score.get_score()}", 1, (255, 255, 255))
+        coin_label = main_font.render(f"Coins: {play.coins}", 1, (255,255,255))
         pause_label = main_font.render(f"[P] - Pause", 1, (255,255,255))
 
         if lost:
@@ -104,6 +110,9 @@ def main():
             r = False
 
         player.draw(wind)
+
+        for cn in coins:
+            cn.draw(wind)
 
         for pil in pills:
             pil.draw(wind)
@@ -122,7 +131,10 @@ def main():
         wind.blit(life, (10, 10))
         wind.blit(score_label, (width - score_label.get_width() - 10, 10))
         wind.blit(pause_label, (10,30))
+        wind.blit(coin_label, (width - coin_label.get_width() - 10,30))
         pygame.display.update()
+
+    #Pause Menu
 
     def pausegame():
         paused = True
@@ -155,18 +167,28 @@ def main():
             clock.tick(FPS)
 
             current_time = pygame.time.get_ticks()
+
+            #Spawn pickup pill
             if current_time - timer >= timer2:
                 if play.lives < 5 and len(pills) < 1:
                     pil = utili.Heart(random.randint(50,550), random.randint(-300,-100), heart)
                     pills.append(pil)
                 timer = current_time
 
+            #Spawn coins
+            if len(coins) <= 3:
+                for i in range(3):
+                    cn = utili.Coin(random.randint(32,568), random.randint(-1600,-400), coin)
+                    coins.append(cn)
+
+            #Handle loss
             if play.lives == 0:
                 lost = True            
 
             if lost:
                 pygame.mixer.music.stop()
                 if lostcount >= FPS * 5:
+                    score.save_score()
                     r = False
                     pygame.mixer.music.play()
                     main()
@@ -179,13 +201,14 @@ def main():
                             if event.key == pygame.K_RETURN:
                                 r = False
 
+            #Spawn enemies
             if len(enemies) < 10:    
                 for i in range(1):
                     ast = utili.Asteroid(0,0)
                     ast.createobj(met1, met2, met3, met4)
                     enemies.append(ast)
                 
-
+            #Move enemies
             for i in enemies:
                 i.move(1)
                 if i.y > 800:
@@ -196,6 +219,7 @@ def main():
                 if i.y > 800:
                     enemies.remove(i)
             
+            #Move pills and handle pill events
             for pil in pills:
                 pil.move()
                 if pil.collision(play):
@@ -203,16 +227,27 @@ def main():
                     pills.remove(pil)
                 if pil.y > 800:
                     pills.remove(pil)
+            
+            #Move coins and handle coin events
+            for cn in coins:
+                cn.move()
+                if cn.collision(play):
+                    play.coins += 1
+                    coins.remove(cn)
+                if cn.y > 800:
+                    coins.remove(cn)
 
-
+            # Scroll background
             bg_y += 1
             bg_y2 += 1
+
             if bg_y > height:
                 bg_y = -height
             
             if bg_y2 > height:
                 bg_y2 = -height
 
+            #Event and input handling
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     r = False
@@ -240,6 +275,7 @@ def main():
                     elif event.key == pygame.K_d:
                         right_pressed = False
 
+            #Keeping spaceship on screen
             if up_pressed and play.y > 0:
                 play.y -= 3
             if down_pressed and play.y < 714:
@@ -254,12 +290,14 @@ def main():
             
             play.cooldown_laser()
 
+            #Spawn enemy ship after every 500 score increment
             if score.get_score() - last_score >= score_increment:
                 enmy = utili.Enemy(random.randint(50,550), enemyimg, elaser, elasersnd)
                 if len(enemies_ships) <= 0:
                     enemies_ships.append(enmy)
                 last_score = score.get_score()
 
+            #Spawn and handle laser collisions for both player and enemy
             for laser in lasers[:]:
                 laser.move()
                 if laser.y < 0:
@@ -287,12 +325,12 @@ def main():
                         play.lives -= 1
                         elasers.remove(elasert)
             
+            #Update display for enemy ship
             for enm in enemies_ships:
                 enm.update(play, elasers)
 
             utili.check_collision(play, enemies, destroysnd)
             
             redraw(play, lasers)
-        score.save_score()
         score.reset_score()
 main()

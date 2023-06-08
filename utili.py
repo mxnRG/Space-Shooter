@@ -32,6 +32,7 @@ class Player(Ship):
         self.lives = lives
         self.laser_cooldown = 0
         self.snd = snd
+        self.coins = 0
 
     def shoot_laser(self, lasers):
         if self.laser_cooldown == 0:
@@ -69,14 +70,14 @@ class Asteroid(Ship):
 
 
 class Enemy(Ship):
-    def __init__(self, x, img, laser_img, snd, speed=2):
+    def __init__(self, x, img, laser_img, snd, speed=4):
         super().__init__(x, -100)
         self.img = img
         self.laser_img = laser_img
         self.mask = pygame.mask.from_surface(self.img)
         self.speed = speed
         self.cd_count = 0
-        self.vel = 2
+        self.vel = 4
         self.snd = snd
 
     def movee(self):
@@ -87,7 +88,7 @@ class Enemy(Ship):
             laser = Laser(self.x + self.get_width() // 2 - self.laser_img.get_width() // 2, self.y + self.get_height(), self.laser_img)
             pygame.mixer.Sound.play(self.snd)
             lasers.append(laser)
-            self.cd_count = 90  
+            self.cd_count = 30  
 
     def update(self, player, lasers):
         self.movee()
@@ -185,8 +186,23 @@ class Heart(Player):
 
     def collision(self,obj):
         return collide(self,obj)
+    
 
+class Coin(Player):
+    def __init__(self,x,y,img):
+        self.x = x
+        self.y = y
+        self.img = img
+        self.mask = pygame.mask.from_surface(self.img)
 
+    def draw(self,window):
+        window.blit(self.img, (self.x,self.y))
+    
+    def move(self):
+        self.y += 3
+    
+    def collision(self,obj):
+        return collide(self,obj)
 
 
 # HELPING FUNCTIONS
@@ -234,6 +250,6 @@ def main_menu(wind, font, background, width, height, high_score,r,lost):
                     wind.blit(high_score_text, (width/2 - high_score_text.get_width()/2, 550))
                     pygame.display.update()
                     pygame.time.delay(3000) 
-                    main_menu(high_score)
+                    
                 elif event.key == pygame.K_e:
                     sys.exit()
